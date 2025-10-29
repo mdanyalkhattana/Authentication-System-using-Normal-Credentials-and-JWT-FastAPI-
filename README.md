@@ -2,10 +2,28 @@
 
 ## 📘 Overview
 
-The **Authentication System using Normal Credentials and JWT** is a secure and modular backend built with **FastAPI**.
-It enables users to **sign up, verify their email, log in, log out, and reset their password** — all using **normal credentials (email & password)** with **JWT-based authentication** for secure session handling.
+The **Authentication System using Normal Credentials and JWT (FastAPI)** is a secure and modular backend designed for modern applications requiring user authentication and authorization.
 
-This project follows modern backend development standards and can easily be integrated into any **frontend application** (React, Angular, Vue, etc.) or **mobile app**.
+This system allows users to **sign up**, **verify their email**, **log in**, **reset passwords**, **logout**, and **manage sessions** securely using **JWT (JSON Web Tokens)** and **Argon2 password hashing**.
+
+It can serve as a backend for:
+
+* Web applications (React, Angular, Vue)
+* Mobile apps (Flutter, Android, iOS)
+* Enterprise systems needing secure user management
+
+This project follows a **clean architecture**, ensuring that the system is **scalable, testable, maintainable, and secure**.
+
+---
+
+## 🧱 Key Objectives
+
+* Secure user registration and login system using email and password
+* Email verification through unique tokens
+* JWT authentication for session management
+* Forgot and reset password workflows
+* Prevention of multiple active sessions per user
+* Modular structure for future scalability and integration
 
 ---
 
@@ -14,45 +32,45 @@ This project follows modern backend development standards and can easily be inte
 ```
 AuthenticationSystem/
 │
-├── main.py                           # Application entry point
+├── main.py                           # Application entry point (creates FastAPI instance)
 ├── database.py                       # SQLAlchemy setup (engine, Base, SessionLocal)
 │
 ├── config/
-│   └── config.py                     # Environment & app configuration (Pydantic)
+│   └── config.py                     # Configuration and environment settings
 │
-├── models/                           # SQLAlchemy ORM models
-│   ├── user_model.py                 # User table
-│   ├── session_model.py              # Session table
-│   ├── email_verification_model.py   # Email verification table
-│   ├── password_reset_model.py       # Password reset table
-│   └── audit_log_model.py            # Optional: Logs user activity
+├── models/                           # SQLAlchemy ORM Models
+│   ├── user_model.py                 # User model (email, password, verification)
+│   ├── session_model.py              # Active session model
+│   ├── email_verification_model.py   # Email verification tokens
+│   ├── password_reset_model.py       # Password reset tokens
+│   └── audit_log_model.py            # Optional: Logs user actions (login/logout)
 │
-├── schemas/                          # Pydantic data validation schemas
-│   ├── user_schema.py                # User creation & response schemas
-│   ├── auth_schema.py                # Login & token schemas
+├── schemas/                          # Pydantic Schemas (Validation Models)
+│   ├── user_schema.py                # User create & response models
+│   ├── auth_schema.py                # Login & JWT token schemas
 │   ├── verify_schema.py              # Email verification schema
 │   ├── password_schema.py            # Forgot/reset password schema
-│   └── token_schema.py               # JWT schema
+│   └── token_schema.py               # JWT structure schema
 │
-├── routes/                           # FastAPI route files
-│   ├── auth_routes.py                # Signup, login, logout routes
-│   ├── verify_routes.py              # Email verification routes
-│   ├── password_routes.py            # Forgot/reset password routes
-│   └── session_routes.py             # Manage active sessions
+├── routes/                           # API Endpoints
+│   ├── auth_routes.py                # Signup, login, logout
+│   ├── verify_routes.py              # Email verification
+│   ├── password_routes.py            # Forgot/reset password
+│   └── session_routes.py             # Session check
 │
-├── utils/                            # Utility/helper modules
-│   ├── hashing.py                    # Password hashing (Argon2 / bcrypt)
+├── utils/                            # Utility modules
+│   ├── hashing.py                    # Argon2 password hashing and verification
 │   ├── jwt_utils.py                  # Create and verify JWT tokens
-│   ├── email_utils.py                # Send emails via SMTP
-│   ├── session_utils.py              # Session management
-│   └── security_utils.py             # (Optional) Password strength validation
+│   ├── email_utils.py                # Send verification & reset emails
+│   ├── session_utils.py              # Manage session state
+│   └── security_utils.py             # Optional password strength validator
 │
 ├── tests/
-│   └── test_auth.py                  # Unit tests
+│   └── test_auth.py                  # Unit and integration tests
 │
 ├── .env                              # Environment variables
 ├── requirements.txt                  # Dependencies
-└── README.md                         # Project documentation
+└── README.md                         # Documentation
 ```
 
 ---
@@ -83,136 +101,164 @@ passlib[bcrypt]
 
 ---
 
-## 🧩 Entities and Relationships
+## 🧩 Database Entities and Relationships
 
-| Entity                | Description                  | Primary Key | Foreign Key      | Relationship                          |
-| --------------------- | ---------------------------- | ----------- | ---------------- | ------------------------------------- |
-| **User**              | Stores user information      | `id`        | —                | 1:N with Session, Verification, Reset |
-| **Session**           | Tracks user sessions         | `id`        | `user_id` → User | Belongs to User                       |
-| **EmailVerification** | Stores verification tokens   | `id`        | `user_id` → User | Belongs to User                       |
-| **PasswordReset**     | Stores password reset tokens | `id`        | `user_id` → User | Belongs to User                       |
+| Entity                | Description                               | Primary Key | Foreign Key      | Relationship                             |
+| --------------------- | ----------------------------------------- | ----------- | ---------------- | ---------------------------------------- |
+| **User**              | Stores registered user data               | `id`        | —                | 1:N with Sessions, Verifications, Resets |
+| **Session**           | Tracks active user sessions               | `id`        | `user_id` → User | Belongs to User                          |
+| **EmailVerification** | Stores verification tokens                | `id`        | `user_id` → User | Belongs to User                          |
+| **PasswordReset**     | Manages password reset tokens             | `id`        | `user_id` → User | Belongs to User                          |
+| **AuditLog**          | Optional tracking of login/logout actions | `id`        | `user_id` → User | Belongs to User                          |
 
 ---
 
-## 🔁 Flow of the Project
+## 🔁 Flow of the System
 
-### 🧱 1. **Signup**
+### 1️⃣ **Signup**
 
 * User registers using username, email, and password.
-* Password is hashed using Argon2.
-* Verification email is sent with a unique token.
+* The password is hashed using **Argon2**.
+* A **verification email** is sent to confirm ownership.
 
-### ✉️ 2. **Email Verification**
+### 2️⃣ **Email Verification**
 
-* User clicks the link or enters a code.
-* Account becomes verified (`is_verified = True`).
+* User receives an email with a **tokenized link**.
+* Clicking it activates the account (`is_verified=True`).
 
-### 🔑 3. **Login**
+### 3️⃣ **Login**
 
-* User logs in using email & password.
-* JWT token is generated for authentication.
-* Session is created in the database.
+* User provides credentials.
+* The password is verified, and a **JWT access token** is generated.
+* Session is created and stored in DB.
 
-### 🚪 4. **Logout**
+### 4️⃣ **Session Management**
 
-* User logs out.
-* Session is deactivated.
+* Each user can have only **one active session** at a time.
+* Attempts to log in again prompt a warning: *"Session already active"*.
 
-### 🔁 5. **Forgot / Reset Password**
+### 5️⃣ **Forgot Password**
 
-* User requests password reset link via email.
-* Token is sent and used to update password securely.
+* User requests a reset link.
+* Email is sent with a secure token for password reset.
 
-### 🧩 6. **Session Check**
+### 6️⃣ **Reset Password**
 
-* Prevents multiple logins on the same account.
+* User sets a new password using the received token.
+* Old tokens and sessions are invalidated.
+
+### 7️⃣ **Logout**
+
+* User logs out manually.
+* Session is marked as inactive.
 
 ---
 
 ## 🧠 Techniques Used
 
-| Technique                        | Purpose                               |
-| -------------------------------- | ------------------------------------- |
-| **FastAPI**                      | High-performance API framework        |
-| **SQLAlchemy ORM**               | Database mapping and management       |
-| **Argon2 / Bcrypt**              | Secure password hashing               |
-| **JWT (JSON Web Token)**         | Stateless authentication              |
-| **SMTP**                         | Email verification and reset password |
-| **Pydantic Models**              | Data validation and serialization     |
-| **Dependency Injection**         | Database session handling             |
-| **Environment Variables (.env)** | Secure configuration                  |
+| Technique                | Description                                            |
+| ------------------------ | ------------------------------------------------------ |
+| **FastAPI**              | Framework for high-performance async APIs              |
+| **SQLAlchemy ORM**       | Object Relational Mapper for database tables           |
+| **Argon2 / Bcrypt**      | Advanced password hashing algorithms                   |
+| **JWT (JSON Web Token)** | Secure token-based authentication                      |
+| **SMTP**                 | Used to send email verification & password reset links |
+| **Pydantic**             | Data validation and serialization                      |
+| **Dependency Injection** | Efficient DB and token handling                        |
+| **.env Configuration**   | Secure environment variable management                 |
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-[ Client / Frontend ]
-        ↓
-[ FastAPI Routes / Controllers ]
-        ↓
-[ Business Logic (Utils) ]
-        ↓
-[ Data Layer (SQLAlchemy ORM) ]
-        ↓
-[ MySQL Database ]
+               ┌────────────────────────────┐
+               │        FRONTEND APP        │
+               │ (React / Angular / Flutter)│
+               └──────────────┬─────────────┘
+                              │
+                              ▼
+                  ┌────────────────────┐
+                  │   FASTAPI ROUTES   │
+                  │ (auth, verify etc) │
+                  └────────┬───────────┘
+                           │
+                           ▼
+                   ┌─────────────────┐
+                   │     SCHEMAS     │
+                   │  (Data models)  │
+                   └────────┬────────┘
+                            │
+                            ▼
+                   ┌─────────────────┐
+                   │     UTILS       │
+                   │(JWT, Hash, Mail)│
+                   └────────┬────────┘
+                            │
+                            ▼
+                   ┌──────────────────┐
+                   │     MODELS       │
+                   │ (SQLAlchemy ORM) │
+                   └────────┬─────────┘
+                            │
+                            ▼
+                     🗄️ MySQL DATABASE
 ```
 
-This modular structure ensures:
+This **layered architecture** ensures:
 
-* 🔄 Reusability
-* 🧩 Scalability
-* 🔐 Security
-* 🧱 Maintainability
+* Clean separation of business logic
+* Scalability for future modules
+* Easier maintenance and testing
 
 ---
 
-## 🌟 Features
+## 🌟 Project Features
 
-✅ Email-based registration
-✅ Email verification system
-✅ JWT authentication & token expiry
-✅ Forgot and reset password feature
-✅ Session tracking (prevent multiple logins)
-✅ Secure password hashing
-✅ Easy MySQL integration
-✅ Fully tested endpoints via Swagger UI
-✅ Modular project structure
+✅ Secure password hashing using Argon2
+✅ JWT-based authentication and session control
+✅ Email verification via SMTP
+✅ Forgot/reset password workflow
+✅ Single active session management
+✅ Validation of user input
+✅ Error handling and structured JSON responses
+✅ Swagger UI for API testing
+✅ Modular and maintainable codebase
 
 ---
 
 ## 🔗 API Endpoints
 
-| Method   | Endpoint           | Description                     |
-| -------- | ------------------ | ------------------------------- |
-| **POST** | `/auth/signup`     | Register new user               |
-| **POST** | `/verify/send`     | Send verification email         |
-| **POST** | `/verify/confirm`  | Verify user email               |
-| **POST** | `/auth/login`      | User login & JWT generation     |
-| **POST** | `/auth/logout`     | Logout and deactivate session   |
-| **POST** | `/password/forgot` | Send reset link to user         |
-| **POST** | `/password/reset`  | Reset password                  |
-| **GET**  | `/session/active`  | Check if user session is active |
-| **GET**  | `/`                | API health/status check         |
+| Method   | Endpoint           | Description                   |
+| -------- | ------------------ | ----------------------------- |
+| **POST** | `/auth/signup`     | Register a new user           |
+| **POST** | `/verify/send`     | Send email verification token |
+| **POST** | `/verify/confirm`  | Verify email token            |
+| **POST** | `/auth/login`      | Login and generate JWT        |
+| **POST** | `/auth/logout`     | Logout and deactivate session |
+| **POST** | `/password/forgot` | Request password reset link   |
+| **POST** | `/password/reset`  | Reset password using token    |
+| **GET**  | `/session/active`  | Check active session          |
+| **GET**  | `/`                | API status check              |
 
 ---
 
-## 🧰 How to Run This Project
+## 🧰 Setup & Usage
 
-### 1️⃣ Clone the Repository
+### 1️⃣ Clone Repository
 
 ```bash
 git clone https://github.com/yourusername/Authentication-System-Using-Normal-Credentials-and-JWT.git
 cd Authentication-System-Using-Normal-Credentials-and-JWT
 ```
 
-### 2️⃣ Create a Virtual Environment
+### 2️⃣ Create Virtual Environment
 
 ```bash
 python -m venv venv
-venv\Scripts\activate      # For Windows
+venv\Scripts\activate       # Windows
 # or
-source venv/bin/activate   # For Linux/Mac
+source venv/bin/activate    # Linux/Mac
 ```
 
 ### 3️⃣ Install Dependencies
@@ -221,9 +267,7 @@ source venv/bin/activate   # For Linux/Mac
 pip install -r requirements.txt
 ```
 
-### 4️⃣ Configure Environment Variables
-
-Create `.env` file:
+### 4️⃣ Configure `.env`
 
 ```env
 DB_USER=root
@@ -249,26 +293,68 @@ SMTP_PORT=587
 uvicorn main:app --reload
 ```
 
-### 6️⃣ Access Swagger UI
+### 6️⃣ Open Swagger UI
 
 ```
 http://127.0.0.1:8000/docs
 ```
 
-You can now test all APIs directly through your browser.
+You can now test all endpoints from your browser!
 
 ---
 
-## 🧱 Example JWT Login Response
+## 🧱 Example API Usage
+
+### **Signup**
+
+**POST** `/auth/signup`
 
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "username": "danyal",
+  "email": "danyal@example.com",
+  "password": "SecurePass123"
+}
+```
+
+**Response**
+
+```json
+{
+  "status": 201,
+  "message": "User created successfully",
+  "user": {
+    "id": 1,
+    "username": "danyal",
+    "email": "danyal@example.com",
+    "is_verified": false
+  }
+}
+```
+
+---
+
+### **Login**
+
+**POST** `/auth/login`
+
+```json
+{
+  "email": "danyal@example.com",
+  "password": "SecurePass123"
+}
+```
+
+**Response**
+
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6...",
   "token_type": "bearer"
 }
 ```
 
-Use the token in your request headers:
+Use this token in headers:
 
 ```
 Authorization: Bearer <your_token_here>
@@ -279,21 +365,19 @@ Authorization: Bearer <your_token_here>
 ## 🚀 Future Enhancements
 
 * 🔒 Two-Factor Authentication (2FA)
-* 🌍 Google / GitHub OAuth Login
-* 🧩 Role-Based Access Control (RBAC)
-* 💾 Redis-based session management
-* 🧠 Unit and integration testing
-* 📱 Integration with a React or Flutter frontend
+* 🌍 Social login (Google, GitHub OAuth2)
+* 🧩 Role-based Access Control (RBAC)
+* 💾 Redis session caching
+* 🧠 Add test automation and CI/CD
+* 📱 Integration with a frontend dashboard
 
 ---
 
 ## 👨‍💻 Author
 
 **Muhammad Danyal**
-💼 Project Manager | Developer | AI & Research Expert
-📧 [your-email@example.com](mailto:your-email@example.com)
+💼 Project Manager | Ali Sher Sie | AI & Backend Expert
 🌐 [GitHub Profile](https://github.com/yourusername)
 
+---
  
-
-Would you like me to generate this as a **ready-to-download `README.md` file** (with Markdown formatting, emojis, and proper spacing) so you can just drop it into your project folder and upload to GitHub?
